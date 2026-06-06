@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Physics Sandbox</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+
+  <style>
+    /* Makes the canvas scale perfectly inside its container */
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: contain;
+      border-radius: 0.75rem;
+    }
+  </style>
+</head>
+<body class="bg-gray-950 text-white min-h-screen p-4 md:p-8 font-sans flex justify-center items-center">
+
+  <div class="max-w-6xl w-full grid grid-cols-1 md:grid-cols-3 gap-6">
+    
+    <div class="col-span-1 bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col shadow-2xl">
+      <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 mb-6">
+        Physics Lab
+      </h1>
+
+      <div class="flex flex-col gap-2 mb-8" id="menu-buttons">
+        <button onclick="loadConcept('newton')" class="concept-btn text-left px-4 py-3 rounded-lg border border-gray-700 bg-gray-800 hover:bg-gray-700 transition-colors text-blue-300 font-semibold">1. Newton's 2nd Law</button>
+        <button onclick="loadConcept('momentum')" class="concept-btn text-left px-4 py-3 rounded-lg border border-gray-700 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">2. Momentum</button>
+        <button onclick="loadConcept('friction')" class="concept-btn text-left px-4 py-3 rounded-lg border border-gray-700 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">3. Friction</button>
+        <button onclick="loadConcept('gravity')" class="concept-btn text-left px-4 py-3 rounded-lg border border-gray-700 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">4. Gravity & Free Fall</button>
+        <button onclick="loadConcept('restitution')" class="concept-btn text-left px-4 py-3 rounded-lg border border-gray-700 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">5. Restitution (Bounce)</button>
+      </div>
+
+      <div class="mt-auto bg-gray-950 p-5 rounded-xl border border-gray-800">
+        <h2 id="info-title" class="text-xl font-bold text-white mb-2">Title</h2>
+        <div class="bg-gray-900 text-emerald-400 font-mono p-3 rounded-lg text-lg text-center mb-3 border border-gray-800" id="info-formula">
+          F = ma
+        </div>
+        <p id="info-desc" class="text-gray-400 text-sm leading-relaxed mb-3">Description goes here.</p>
+        <ul id="info-vars" class="text-xs text-gray-500 space-y-1 font-mono">
+          </ul>
+      </div>
+    </div>
+
+    <div class="col-span-1 md:col-span-2 flex flex-col gap-4">
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex justify-between items-center shadow-xl">
+        <p class="text-gray-400 text-sm italic" id="action-hint">Select a concept to begin.</p>
+        <div class="flex gap-3">
+          <button id="btn-action" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-900/20 transition-all">
+            Action Button
+          </button>
+          <button onclick="loadConcept(currentConceptKey)" class="px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition-all">
+            ↻ Reset
+          </button>
+        </div>
+      </div>
+
+      <div id="canvas-container" class="w-full aspect-video bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl relative">
+        </div>
+    </div>
+
+  </div>
+
+  <script>
+    // --- 1. SETUP MATTER.JS ALIASES ---
+    const Engine = Matter.Engine,
+          Render = Matter.Render,
+          Runner = Matter.Runner,
+          Bodies = Matter.Bodies,
+          Body = Matter.Body,
+          Composite = Matter.Composite,
+          Events = Matter.Events;
+
+    // --- 2. INITIALIZE ENGINE ---
+    const engine = Engine.create();
+    const world = engine.world;
+    const canvasWidth = 800;
+    const canvasHeight = 450;
+
+    const render = Render.create({
+      element: document.getElementById('canvas-container'),
+      engine: engine,
+      options: {
+        width: canvasWidth,
+        height: canvasHeight,
+        wireframes: false,
+        background: '#111827' // Tailwind gray-900
+      }
+    });
+
+    Render.run(render);
+    const runner = Runner.create();
+    Runner.run(runner, engine);
+
+    // Variables to hold active physics bodies so buttons can talk to them
+    let activeBodies = [];
+    let currentConceptKey = 'newton';
+
+    // --- 3. PHYSICS CONCEPTS DATA & LOGIC ---
+    const concepts = {
+      newton: {
+        title: "Newton's 2nd Law",
+        formula: "a = F / m",
+        desc: "Acceleration is directly proportional to force and inversely proportional to mass. We will apply the exact same force to a light box and a heavy box.",
+        vars: ["F = Force applied", "m = Mass of object", "a = Resulting acceleration"],
+        btnText: "💨 Apply Wind Force",
+        hint: "Watch the blue (light) box vs the green (heavy) box.",
+        setup: () => {
+          // Light box (blue)
+          let light = Bodies.rectangle(200, 350, 50, 50, { 
+            render: { fillStyle: '#3B82F6' },
+            frictionAir: 0.05 
+          });
+          Body.setMass(light, 1);
+
+          // Heavy box (green)
+          let heavy = Bodies.rectangle(200, 150, 80, 80, { 
+            render: { fillStyle: '#10B981' },
+            frictionAir: 0.05
+          });
+          Body.setMass(heavy, 10);
+
+          activeBodies = [light, heavy];
+          Composite.add(world, activeBodies);
+        },
+        action: () => {
+          // Apply identical force (0.05 units) to both
+          activeBodies.forEach(b => Body.applyForce(b, b.position, { x: 0.05, y: 0 }));
+        }
+      },
+      
+      momentum: {
+        title: "Conservation of Momentum",
+        formula: "p = m × v",
+        desc: "Momentum is mass in motion. When the heavy moving ball hits the small stationary ball, momentum transfers, sending the small ball flying.",
+        vars: ["p = Total Momentum", "m = Mass", "v = Velocity"],
+        btnText: "🎱 Fire Heavy Ball",
+        hint: "Observe the velocity transfer after the collision.",
+        setup: () => {
+          engine.world.gravity.y = 0; // Turn off gravity for a top-down pool table feel
+          
+          let heavy = Bodies.circle(100, canvasHeight/2, 40, { 
+            render: { fillStyle: '#10B981' }, restitution: 1, frictionAir: 0 
+          });
+          Body.setMass(heavy, 10);
+
+          let light = Bodies.circle(400, canvasHeight/2, 20, { 
+            render: { fillStyle: '#3B82F6' }, restitution: 1, frictionAir: 0 
+          });
+          Body.setMass(light, 1);
+
+          activeBodies = [heavy];
+          Composite.add(world, [heavy, light]);
+        },
+        action: () => {
+          Body.setVelocity(activeBodies[0], { x: 10, y: 0 }); // Shoot the heavy ball
+        }
+      },
+
+      friction: {
+        title: "Friction",
+        formula: "F_f = μ × F_n",
+        desc: "Friction resists motion. Three identical boxes are on three different surfaces: Ice (low), Wood (medium), and Rubber (high).",
+        vars: ["F_f = Frictional Force", "μ = Coefficient of Friction", "F_n = Normal Force (Weight)"],
+        btnText: "▶ Push All Boxes",
+        hint: "Top = Ice, Middle = Wood, Bottom = Rubber.",
+        setup: () => {
+          engine.world.gravity.y = 0; // Top-down view
+          
+          let props = [
+            { y: 100, fric: 0.001, color: '#93C5FD' }, // Ice
+            { y: 225, fric: 0.05, color: '#FCD34D' },  // Wood
+            { y: 350, fric: 0.3, color: '#EF4444' }    // Rubber
+          ];
+
+          activeBodies = [];
+          props.forEach(p => {
+            // Surface line
+            Composite.add(world, Bodies.rectangle(400, p.y + 30, 800, 10, { isStatic: true, render: { fillStyle: '#374151'} }));
+            // The Box
+            let box = Bodies.rectangle(100, p.y, 40, 40, { 
+              frictionAir: p.fric, // Using air friction to simulate surface drag in zero-G
+              render: { fillStyle: p.color }
+            });
+            activeBodies.push(box);
+          });
+          Composite.add(world, activeBodies);
+        },
+        action: () => {
+          activeBodies.forEach(b => Body.setVelocity(b, { x: 15, y: 0 }));
+        }
+      },
+
+      gravity: {
+        title: "Gravity & Free Fall",
+        formula: "d = ½ g t²",
+        desc: "In a vacuum (no air resistance), gravity accelerates all objects equally. The large heavy mass and small light mass will hit the ground at the exact same time.",
+        vars: ["d = Distance fallen", "g = Gravity (9.8m/s²)", "t = Time"],
+        btnText: "🔻 Drop Objects",
+        hint: "Air resistance is turned off. Mass does not affect fall speed here.",
+        setup: () => {
+          // Heavy large ball
+          let heavy = Bodies.circle(300, 50, 40, { isStatic: true, frictionAir: 0, render: { fillStyle: '#10B981'} });
+          Body.setMass(heavy, 50);
+          
+          // Light small ball
+          let light = Bodies.circle(500, 50, 15, { isStatic: true, frictionAir: 0, render: { fillStyle: '#3B82F6'} });
+          Body.setMass(light, 1);
+
+          activeBodies = [heavy, light];
+          Composite.add(world, activeBodies);
+        },
+        action: () => {
+          // Unfreeze them to let them fall
+          activeBodies.forEach(b => Body.setStatic(b, false));
+        }
+      },
+
+      restitution: {
+        title: "Restitution (Bounciness)",
+        formula: "e = v_after / v_before",
+        desc: "Restitution measures how much kinetic energy is kept after a collision. 0 is a dead stop (clay), 1 is a perfect bounce (superball).",
+        vars: ["e = Coefficient of Restitution", "v = Velocity"],
+        btnText: "🔻 Drop Objects",
+        hint: "Left: e=0.2, Middle: e=0.6, Right: e=1.0",
+        setup: () => {
+          let balls = [
+            Bodies.circle(200, 50, 25, { isStatic: true, restitution: 0.2, render: { fillStyle: '#EF4444'} }), // Low
+            Bodies.circle(400, 50, 25, { isStatic: true, restitution: 0.6, render: { fillStyle: '#F59E0B'} }), // Med
+            Bodies.circle(600, 50, 25, { isStatic: true, restitution: 1.0, render: { fillStyle: '#10B981'} })  // High
+          ];
+          activeBodies = balls;
+          Composite.add(world, activeBodies);
+        },
+        action: () => {
+          activeBodies.forEach(b => Body.setStatic(b, false));
+        }
+      }
+    };
+
+    // --- 4. SCENE MANAGER & UI LOGIC ---
+    function loadConcept(key) {
+      currentConceptKey = key;
+      const concept = concepts[key];
+
+      // Update UI Text
+      document.getElementById('info-title').innerText = concept.title;
+      document.getElementById('info-formula').innerText = concept.formula;
+      document.getElementById('info-desc').innerText = concept.desc;
+      document.getElementById('btn-action').innerText = concept.btnText;
+      document.getElementById('action-hint').innerText = concept.hint;
+      
+      // Update Variables List
+      const varsUl = document.getElementById('info-vars');
+      varsUl.innerHTML = '';
+      concept.vars.forEach(v => {
+        let li = document.createElement('li');
+        li.innerText = "• " + v;
+        varsUl.appendChild(li);
+      });
+
+      // Update Button Styles
+      document.querySelectorAll('.concept-btn').forEach((btn, index) => {
+        if(Object.keys(concepts)[index] === key) {
+          btn.classList.add('text-blue-400', 'border-blue-500/50', 'bg-blue-900/20');
+          btn.classList.remove('text-gray-300', 'border-gray-700', 'bg-gray-800');
+        } else {
+          btn.classList.remove('text-blue-400', 'border-blue-500/50', 'bg-blue-900/20');
+          btn.classList.add('text-gray-300', 'border-gray-700', 'bg-gray-800');
+        }
+      });
+
+      // Reset Matter.js World
+      Composite.clear(world);
+      Engine.clear(engine);
+      engine.world.gravity.y = 1; // Default gravity
+
+      // Add Static Boundaries (Floor, Walls)
+      const boundaries = [
+        Bodies.rectangle(canvasWidth/2, canvasHeight + 25, canvasWidth, 50, { isStatic: true, render:{fillStyle:'#1F2937'} }), // Floor
+        Bodies.rectangle(-25, canvasHeight/2, 50, canvasHeight, { isStatic: true }), // Left Wall
+        Bodies.rectangle(canvasWidth + 25, canvasHeight/2, 50, canvasHeight, { isStatic: true }) // Right Wall
+      ];
+      Composite.add(world, boundaries);
+
+      // Setup specific concept bodies
+      concept.setup();
+    }
+
+    // Connect Action Button
+    document.getElementById('btn-action').addEventListener('click', () => {
+      concepts[currentConceptKey].action();
+    });
+
+    // Boot up the first concept
+    loadConcept('newton');
+
+  </script>
+</body>
+</html>
