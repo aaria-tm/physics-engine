@@ -1,9 +1,9 @@
 # physics-engine
-# 🧪 Interactive Physics Sandbox
+# Interactive Physics Sandbox
 
 A single-file, web-based physics engine laboratory designed to visually demonstrate fundamental physics concepts. Built with vanilla JavaScript, **Matter.js** for robust rigid-body physics, and **Tailwind CSS** for a clean, modern user interface.
 
-## 🚀 Features
+## Features
 * **Zero Setup Required:** Runs entirely in the browser. No build steps, no servers, and no installations necessary.
 * **Multi-Concept Scene Manager:** Dynamically clears and rebuilds the physics world based on the selected educational topic.
 * **Interactive UI:** Click buttons to apply forces, fire projectiles, and drop objects in real-time.
@@ -17,7 +17,7 @@ A single-file, web-based physics engine laboratory designed to visually demonstr
 
 ---
 
-## 🏃 How to Run
+## How to Run
 
 1. Create a new folder on your computer (e.g., `PhysicsSandbox`).
 2. Download or copy the code into a file named `sandbox.html`.
@@ -26,7 +26,7 @@ A single-file, web-based physics engine laboratory designed to visually demonstr
 
 ---
 
-## 📚 Concepts Covered
+## Concepts Covered
 
 The sandbox includes 5 distinct scenes, each isolating a specific physics principle:
 
@@ -47,7 +47,7 @@ Drops three objects with different bounciness coefficients (0.2, 0.6, and 1.0) o
 
 ---
 
-## 💻 How to Expand / Customize
+## How to Expand / Customize
 
 Because this is a single-file application, you can easily tweak the physics parameters by editing the `concepts` object inside the `<script>` tag.
 
